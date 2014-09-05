@@ -1,0 +1,92 @@
+#!/usr/bin/perl
+
+#Created by: Mark Cosby
+#Date: 120918
+
+#Revision(s):
+#Date: Description of Change:
+# 130308: Converted to Moving Files Through System PDF Only.
+# 130318: Added chmod to fix permissions problems related to copying files to del directory.
+# 140320: Moved Files to Directory Paths to Variables for better control.
+# 140506: Converted to handle hendrix format.
+
+system("ls '//ATC-FS01/Master/Frames - standard/VS1/PEND/RAV' > pendlist.txt");
+
+my $CADPendDir              = '//ATC-FS01/Master/Frames - standard/VS1/PEND/RAV/';
+my $PDFRelDir               = '//ATC-FS01/Master/Frames - standard/VS1/REL/RAV/PDF/';
+my $SLDRelDir               = '//ATC-FS01/Master/Frames - standard/VS1/REL/RAV/SLD/';
+my $ProductionPDFReleaseDir = '//ATC-FS01/mDriveData/VS1/Production Drawing/Hendrix_StockPDFs/';
+my $ProductionJPGReleaseDir = '//ATC-FS01/mDriveData/VS1/Production Drawing/Hendrix_StockJPGs/';
+my $TempHoldDir             = '//ATC-FS01/mDriveData/VS1/Production Drawing/del';
+
+$filename = "pendlist.txt";
+open( FH1, "$filename" ) or die "Not Working, Can not Find File\n";
+
+while ( $_ = <FH1> ) {
+	chomp $_;
+	$ext = substr( $_, length($_) - 3, 3 );
+
+	# Alternative format
+	$ext = substr( $_, -3 );
+
+	$image_name = substr( $_, 0, length($_) - 4 );
+	print("$image_name\n");
+
+	#print "$_, $ext\n";
+	if ( ( $ext =~ "PDF" ) || ( $ext =~ "pdf" ) ) {
+		print("$_, $ext\n");
+
+		# Copy Release Files to Holding Directory - Manually Moved to Superceded Directory
+		system("cp \"$PDFRelDir$_\" '$TempHoldDir' ");
+		system("chmod 777 \"$TempHoldDir/$_\" ");
+
+		# Copy Pending Files to VS1 Production Drawings Directory
+		system("cp \"$CADPendDir$_\" \"$ProductionPDFReleaseDir$_\" ");
+
+		# Move Pending Files to Release Directory
+		system("mv \"$CADPendDir$_\" \"$PDFRelDir$_\" ");
+
+		# Convert pdf to jpg files
+		# file size 120kb, using as standard starting out.
+		system( "convert -verbose -monochrome -resize 2500 -interlace none -rotate 90 -density 300 -threshold 80% -quality 80 \"$ProductionPDFReleaseDir$_\" \"$ProductionJPGReleaseDir$image_name.jpg\"");
+
+		if ( $image_name == 'RAV, MTL - TWO TONE' ) {
+		#	system("convert -verbose -rotate 90 \"$ProductionPDFReleaseDir$_\" \"$ProductionJPGReleaseDir$image_name.jpg\"");
+		}
+	}
+}
+
+close(FH1);
+
+open( FH1, "$filename" ) or die "Not Working, Can not Find File\n";
+while ( $_ = <FH1> ) {
+	chomp $_;
+	$ext = substr( $_, length($_) - 6, 6 );
+
+	# Alternative format
+	$ext = substr( $_, -6 );
+
+	$image_name = substr( $_, 0, length($_) - 7 );
+	print("$image_name\n");
+
+	#print "$_, $ext\n";
+	if (   ( $ext =~ "SLDPRT" )
+		|| ( $ext =~ "SLDDRW" )
+		|| ( $ext =~ "SLDASM" )
+		|| ( $ext =~ "slddrw" )
+		|| ( $ext =~ "sldprt" )
+		|| ( $ext =~ "sldasm" ) )
+	{
+		print("$_, $ext\n");
+
+		# Copy Release Files to Holding Directory - Manually Moved to Superceded Directory
+		system("cp \"$SLDRelDir$_\" '$TempHoldDir' ");
+		system("chmod 777 \"$TempHoldDir/$_\" ");
+
+		# Move Pending Files to Release Directory
+		system("mv \"$CADPendDir$_\" \"$SLDRelDir$_\" ");
+	}
+
+}
+
+close(FH1);
